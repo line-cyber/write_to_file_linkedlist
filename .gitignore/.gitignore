@@ -1,0 +1,641 @@
+// LinkedList.cpp: определяет точку входа для консольного приложения.
+//
+
+#include <iostream>
+#include <algorithm>
+#include <math.h>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+using namespace std;
+
+class Element
+{
+	//элемент связного списка
+private:
+	//указатель на предыдущий и следующий элемент
+	Element* next;
+	Element* prev;
+
+	//информация, хранимая в поле
+	double field;
+public:
+	//доступ к полю *next
+	virtual Element* getNext() { return next; }
+	virtual void setNext(Element* value) { next = value; }
+
+	//доступ к полю *prev
+	virtual Element* getPrevious() { return prev; }
+	virtual void setPrevious(Element* value) { prev = value; }
+
+	//доступ к полю с хранимой информацией field
+
+	virtual double getValue() { return field; }
+	virtual void setValue(double value) { field = value; }
+};
+
+class LinkedListParent
+{
+protected:
+	//достаточно хранить только начало
+	Element* begin;
+	//для удобства храним количество элементов
+	int num;
+public:
+	virtual int Number() { return num; }
+
+	virtual Element* getBegin() { return begin; }
+
+	LinkedListParent()
+	{
+		//конструктор без параметров
+		cout << "\nParent constructor\n";
+		begin = NULL;
+		num = 0;
+	}
+
+	virtual Element* push(double a)
+	{
+		//положить элемент в конец
+		Element* cur = begin;
+		if (begin == NULL)
+		{
+			//ничего в списке нет
+			num = 1;
+			begin = new Element;
+			begin->setValue(a);
+			begin->setNext(NULL);
+			return begin;
+		}
+		//ищем последний элемент - добавить аналогичную рекурсивную процедуру
+		while (cur->getNext() != NULL)
+		{
+			cur = cur->getNext();
+		}
+		num++;
+		//вставка элемента
+		cur->setNext(new Element);
+		cur->getNext()->setValue(a);
+		cur->getNext()->setNext(NULL);
+
+		return cur->getNext();
+	}
+
+	virtual Element* push_r(double a, Element* current = NULL)
+	{
+		//положить элемент в конец - рекурсивная версия
+
+		//в списке нет элементов - цепляем в начало добавляемый элемент
+		if (begin == NULL)
+		{
+			//ничего в списке нет
+			num = 1;
+			begin = new Element;
+			begin->setValue(a);
+			begin->setNext(NULL);
+			return begin;
+		}
+		//ничего не передано в функцию - по умолчанию начинаем поиск свободного места с начала списка
+		if (current == NULL)
+			current = begin;
+		//мы находимся где-то в списке - ищем последний элемент рекурсивно
+		if (current->getNext() != NULL)
+			return push_r(a, current->getNext());
+		//указатель на следующий элемент свободен - цепляем туда новый. Здесь рекурсия закончится 
+		if (current->getNext() == NULL)
+		{
+			current->setNext(new Element);
+			current->getNext()->setValue(a);
+			current->getNext()->setNext(NULL);
+			num++;
+			return current->getNext();
+		}
+	}
+
+	virtual double pop()
+	{
+		//вытащить элемент с конца
+		Element* cur = begin;
+		Element* prev = NULL;
+		//отдельно рассмотрим случай 0/1 элементов
+		if (begin == NULL)
+		{
+			return -1;
+		}
+		if (num == 1)
+		{
+			double res = begin->getValue();
+			num--;
+			return res;
+		}
+		//ищем последний и предпоследний элемент
+		while (cur->getNext() != NULL)
+		{
+			prev = cur;
+			cur = cur->getNext();
+		}
+		//сохраняем результат
+		double res = cur->getValue();
+		//предпоследний стал последним
+		prev->setNext(NULL);
+		//последнего стёрли
+		delete cur;
+		//число элементов снизилось на 1	
+		num--;
+		//возвращаем удаленный элемент
+		return res;
+
+	}
+
+
+	~LinkedListParent()
+	{
+		//деструктор - освобождение памяти
+		while (begin!=NULL)
+		{
+			Element*elem = begin->getNext();
+			delete begin;
+			begin = elem;
+			//pop();
+		}
+		cout << "\nParent destructor\n";
+	}
+
+	//получение элемента по индексу - какова асимптотическая оценка этого действия?  O(n)
+	virtual Element* operator[](int i)
+	{
+		//индексация
+		if (i<0 || i>num) return NULL;
+		int k = 0;
+
+		//ищем i-й элемент - вставим в начало и отсчитываем i шагов вперед
+		Element* cur = begin;
+		for (k = 0; k < i; k++)
+		{
+			cur = cur->getNext();
+		}
+		return cur;
+	}
+
+	LinkedListParent(const LinkedListParent & L)
+	{
+		Element* p = L.begin;
+
+		while (p != NULL)
+		{
+			push(p->getValue());
+			p = p->getNext();
+		}
+	}
+	virtual LinkedListParent & operator=(const LinkedListParent &L)
+	{
+		if (this != &L)
+		{
+			Element* p = L.begin;
+			this->num = L.num;
+			begin = NULL;
+
+			while (p != NULL)
+			{
+				push(p->getValue());
+				p = p->getNext();
+			}
+		}
+		return *this;
+	}
+
+	virtual void print()
+	{
+		//итеративная версия вывода списка - стандартный цикл перебора всех элементов
+		Element* cur = begin;
+		while (cur != NULL)
+		{
+			cout << cur->getValue() << "\n";
+			cur = cur->getNext();
+		}
+	}
+
+	virtual void print_r(Element* current = NULL)
+	{
+		//рекурсивная версия вывода списка 
+		if (current == NULL)
+			current = begin;
+		if (current != NULL)
+		{
+			cout << current->getValue() << "\n";
+			//применяем функцию к следующему элементу
+			if (current->getNext() != NULL)
+				print_r(current->getNext());
+		}
+
+	}
+
+	friend ostream &operator << (ostream &ustream, LinkedListParent& obj);
+	friend istream &operator >> (istream &ustream, LinkedListParent& obj);
+
+};
+
+ostream &operator << (ostream &ustream, LinkedListParent& obj)
+{
+	if (typeid(ustream).name() == typeid(ofstream).name())
+	{
+		ustream << obj.Number() << "\n";
+		while (obj.begin != NULL)
+		{
+			ustream << obj.begin->getValue() << "\n";
+			obj.begin = obj.begin->getNext();
+		}
+	}
+	else
+	{
+		ustream << "List size = "<< obj.Number() << "\n";
+		while (obj.begin != NULL)
+		{
+			ustream <<"Element of list: "<< obj.begin->getValue() << "\n";
+			obj.begin = obj.begin->getNext();
+		}
+		
+	}
+	return ustream;
+};
+
+istream &operator >> (istream &ustream, LinkedListParent& obj) 
+{
+	int size;
+	ustream >> size;
+
+	double value;
+	
+	for(int i=0;i<size;i++)
+	{
+		ustream >> value;
+		obj.push(value);
+	}
+	return ustream;
+};
+
+ostream& my_manip(ostream& ustream)
+{
+	
+	ustream.width(5);
+
+	return ustream;
+}
+class LinkedListChild : public LinkedListParent
+{
+public:
+	LinkedListChild() : LinkedListParent() { cout << "\nChild constructor\n"; }
+
+	~LinkedListChild() { cout << "\nChild destructor\n"; }
+
+	virtual Element* insert(Element* current, double value)
+	{
+		Element* newElem = new Element;
+		newElem->setNext(NULL);
+		newElem->setValue(value);
+
+		return insert(current, newElem);
+		//вставка элемента со значением value в список сразу за элементом current
+	}
+
+	virtual Element* insert(Element* current, Element* newElem) //O(1)
+	{
+		//вставка элемента newElem в список сразу за элементом current
+		if (current == NULL)
+		{
+			//ищем последний, если список не пустой
+			if (begin == NULL)
+			{
+				//push(value);
+				return NULL;
+			}
+
+			current = begin;
+			//условие для последнего элемента
+			while (current->getNext() != NULL)
+			{
+				current = current->getNext();
+			}
+
+			current->setNext(newElem);
+			newElem->setNext(NULL);
+			num++;
+			return current->getNext();
+		}
+
+		newElem->setNext(current->getNext());
+		current->setNext(newElem);
+		num++;
+
+
+		//список не пустой, current!=NULL
+
+		return current->getNext();
+	}
+
+	void remove(Element* current)  //O(1)
+	{
+		//удаление элемента
+		Element* previous = begin;
+		while (previous->getNext() != current)
+		{
+			previous = previous->getNext();
+		}
+		previous->setNext(current->getNext());
+		num--;
+
+		delete current;
+	}
+
+	Element* find(double value_to_find)   //O(n)
+	{
+		Element* current = begin;
+		while (current != NULL)
+		{
+			if (value_to_find == current->getValue())
+				return current;
+			current = current->getNext();
+
+		}
+		return NULL;
+	}
+	LinkedListChild(const LinkedListChild & L)
+	{
+		Element* p = L.begin;
+
+		while (p != NULL)
+		{
+			push(p->getValue());
+			p = p->getNext();
+		}
+	}
+	virtual LinkedListChild & operator=(const LinkedListChild &L)
+	{
+		if (this != &L)
+		{
+			Element* p = L.begin;
+			this->num = L.num;
+			begin = NULL;
+
+			while (p != NULL)
+			{
+				push(p->getValue());
+				p = p->getNext();
+			}
+		}
+		return *this;
+	}
+};
+
+class DoubleSidedLinkedList : public LinkedListChild
+{
+protected:
+	//указатель на конец списка
+	Element* end;
+public:
+	DoubleSidedLinkedList() : LinkedListChild() { cout << "\nDoubleSidedLinkedList constructor"; end = NULL; }
+	~DoubleSidedLinkedList() { cout << "\nDoubleSidedLinkedList destructor"; }
+
+	virtual Element* getEnd() { return end; }
+
+	virtual Element* push(double value)
+	{
+		//O(n)
+		Element* added_element = LinkedListChild::push(value);
+
+		if (end != NULL)
+		{
+			//O(1)
+			//Element* added_element = LinkedListChild::insert(end, value);
+			//много элементов
+			end->setNext(added_element);
+			added_element->setPrevious(end);
+			end = added_element;
+		}
+		else
+		{
+			//добавляем первый элемент
+			end = added_element;
+		}
+		return end;
+	}
+	virtual Element* push_r(double a, Element* current = NULL)
+	{
+		//положить элемент в конец - рекурсивная версия
+
+		//в списке нет элементов - цепляем в начало добавляемый элемент
+		if (begin == NULL)
+		{
+			//ничего в списке нет
+			num = 1;
+			begin = new Element;
+			begin->setValue(a);
+			begin->setNext(NULL);
+			return begin;
+		}
+		//ничего не передано в функцию - по умолчанию начинаем поиск свободного места с начала списка
+		if (current == NULL)
+			current = begin;
+		if (end)
+			return push_r(a, current->getNext());
+		//указатель на следующий элемент свободен - цепляем туда новый. Здесь рекурсия закончится 
+		if (current->getNext() == NULL)
+		{
+			current->setNext(new Element);
+			current->getNext()->setValue(a);
+			current->getNext()->setNext(NULL);
+			num++;
+			return current->getNext();
+		}
+	}
+
+	virtual Element* insert(Element* current, double value)
+	{
+		if (current == NULL)
+		{
+			Element* inserted_element = push(value);
+			return inserted_element;
+		}
+		else
+		{
+			Element* inserted_element = LinkedListChild::insert(current, value);
+			//current->next до вставки
+			if (inserted_element->getNext() != NULL)
+				inserted_element->getNext()->setPrevious(inserted_element);
+			inserted_element->setPrevious(current);
+
+			if (current == end)
+				end = inserted_element;
+
+
+			return inserted_element;
+		}
+	}
+
+	virtual Element* Find(double value_to_find)
+	{
+		Element* cur = begin;
+		while (cur != NULL)
+		{
+			if (cur->getValue() == value_to_find)
+				return cur;
+			cur = cur->getNext();
+		}
+		return NULL;
+	}
+
+	virtual double pop()
+	{
+		Element* cur = end;
+		Element* prev = NULL;
+		if (end == NULL)
+		{
+			return -1;
+		}
+		if (num == 1)
+		{
+			double res = end->getValue();
+			num--;
+			return res;
+		}
+		prev = cur->getPrevious();
+		double res = cur->getValue();
+		prev->setNext(NULL);
+		delete cur;
+		num--;
+		return res;
+	}
+
+	void remove(Element* current)
+	{
+		if (num == 0)
+		{
+			begin = NULL;
+			end = NULL;
+		}
+		if (current == begin)
+		{
+			begin = begin->getNext();
+			begin->setNext(NULL);
+		}
+		if (current == end)
+		{
+			end = end->getPrevious();
+			end->setNext(NULL);
+		}
+
+		//удаление элемента
+		Element* previous = current->getPrevious();
+		Element* next = current->getNext();
+
+		if (previous != NULL)
+		{
+			previous->setNext(current->getNext());
+		}
+		if (next != NULL)
+		{
+			next->setPrevious(current->getPrevious());
+		}
+
+		delete current;
+	}
+	
+
+};
+
+int main()
+{
+	if (1)
+	{
+		LinkedListChild C;
+		C.push_r(1); C.push_r(2); C.push_r(3);
+		int i = 0;
+		//for(i=0;i<3;i++) cout<<" "<<L[i]->field;
+		
+		cout << "C: \n"; C.print_r();
+
+		ofstream fout;
+		fout.open("text.txt", ios::out);
+		if (fout)
+		{
+			fout << C;
+			fout.close();
+		}
+		ifstream fin("text.txt");
+		if (fin)
+		{
+			try
+			{
+				fin >> C;
+				fin.close();
+				cout <<my_manip << C;
+				cout << "\n";
+				
+			}
+			catch (...)
+			{
+				cout << "\nException: failed to read file";
+			}
+		}
+		
+		LinkedListChild C1;
+		C1.push_r(4); C1.push_r(6); C1.push_r(2); C1.push_r(9);
+		cout << "C1: \n"; C1.print_r();
+		ofstream fout1;
+		fout1.open("text.txt", ios::out);
+		if (fout1)
+		{
+			fout1 << C1;
+			fout1.close();
+		}
+		ifstream fin1("text.txt");
+		if (fin1)
+		{
+			try
+			{
+				
+				fin1 >> C1;
+				fin1.close();
+				cout <<my_manip << C1;
+				cout << "\n";
+			}
+			catch (...)
+			{
+				cout << "\nException: failed to read file";
+			}
+		}
+		
+		DoubleSidedLinkedList L;
+		L.push(10); L.push(20); L.push(30);
+		cout << "\nL: \n"; L.print_r();
+		ofstream fout2;
+		fout2.open("text.txt", ios::out);
+		if (fout2)
+		{
+			fout2 << L;
+			fout2.close();
+		}
+		ifstream fin2("text.txt");
+		if (fin2)
+		{
+			try
+			{
+				fin2 >> L;
+				fin2.close();
+				cout <<my_manip<< L;
+				cout << "\n";
+			}
+			catch (...)
+			{
+				cout << "\nException: failed to read file";
+			}
+			
+		}
+	
+	}
+	
+	return 0;
+}
+
+
+
